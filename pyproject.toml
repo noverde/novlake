@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "novlake"
+version = "0.1.0"
+description = "Tools to work with our data lake"
+authors = ["Pierre-Marie Leveque <pierre@noverde.com.br>"]
+
+[tool.poetry.dependencies]
+python = "^3.6"
+awswrangler = "^0.0.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^3.0"
+python-dotenv = "^0.10.3"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
