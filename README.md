@@ -4,7 +4,7 @@ Utils to work with our data lake.
 
 ## Install
 
-```
+```bash
 python3 -m pip install git+https://github.com/noverde/novlake#egg=novlake
 
 ```
@@ -14,18 +14,18 @@ python3 -m pip install git+https://github.com/noverde/novlake#egg=novlake
 
 Create .env file in home directory with:
 
-```
+```bash
 export NOVLAKE_SETTINGS=s3://<BUCKET_NAME>/novlake-settings.yaml
 
 ```
 
 ## Exemplo
 
-```
+```python
 from novlake.lake import Lake
 lake = Lake("camila")
 
-lake.query("select * from dumps.loans limit 10")
+lake.query("SELECT * FROM dumps.loans LIMIT 10")
 
 ```
 
