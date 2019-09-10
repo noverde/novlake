@@ -19,6 +19,19 @@ export NOVLAKE_SETTINGS=s3://<BUCKET_NAME>/novlake-settings.yaml
 
 ```
 
+## Exemplo
+
+```
+from novlake.lake import Lake
+lake = Lake("camila")
+
+lake.query("select * from dumps.loans limit 10")
+
+```
+
+
+## novlake-settings.yaml
+
 novlake-settings.yaml shall use the following schema:
 
 ```yaml
