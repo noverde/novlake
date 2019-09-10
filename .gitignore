@@ -3,3 +3,4 @@ venv
 novlake.egg-info
 dist
 __pycache__
+novlake-settings.yaml
