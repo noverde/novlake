@@ -7,6 +7,9 @@ authors = ["Pierre-Marie Leveque <pierre@noverde.com.br>"]
 [tool.poetry.dependencies]
 python = "^3.6"
 awswrangler = "^0.0.1"
+python-dotenv = "^0.10.3"
+boto3 = "^1.9"
+PyYAML = "^5.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^3.0"
