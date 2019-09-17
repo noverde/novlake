@@ -86,3 +86,43 @@ class Lake():
             .load()
         )
 
+    def export(self, dataframe, table_name, database_name=None, bucket_name=None, force_replace=False, ignore_warning=False):
+        if database_name is None:
+            database_name = f"user_{self.user_name}"
+
+        if bucket_name is None:
+            s3_path = self.s3_repo
+        else:
+            s3_path = f"s3://{bucket_name}/{database_name}/" 
+
+        table_path = f"{s3_path}{table_name}"
+        
+        if not ignore_warning and "user_" not in database_name:
+            raise Exception("FORBIDDEN database_name. Must be `user_xxxxx`")
+            
+        # check existing data
+        
+        try:
+            existing_data = show(f"select * from {database_name}.{table_name} limit 5")
+        except Exception as e:
+            if "does not exist" in str(e):
+                existing_data = []
+            else:
+                raise e
+            
+        if len(existing_data) > 0 and not force_replace:
+            raise Exception(f"Table already contains data. Use 'force_replace=True' in order to overwrite.\nCurrent table data (5 sample rows):\n{str(existing_data)}")
+        
+        if len(existing_data) > 0 and force_replace:
+            session.s3.delete_objects(path=table_path)
+            
+    
+        session.pandas.to_parquet(
+            dataframe=dataframe,
+            database=database_name,
+            path=table_path,
+            # partition_cols=["col_name"],
+        )
+        
+        print(f"Successfully exported data to S3 ({table_path}) and registered table to Athena")
+        print(f"Preview data with: SELECT * FROM {database_name}.{table_name}")
