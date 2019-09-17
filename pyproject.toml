@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "novlake"
-version = "0.1.0"
+version = "0.1.1"
 description = "Tools to work with our data lake"
 authors = ["Pierre-Marie Leveque <pierre@noverde.com.br>"]
 

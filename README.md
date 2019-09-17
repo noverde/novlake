@@ -12,12 +12,14 @@ python3 -m pip install git+https://github.com/noverde/novlake#egg=novlake
 
 ## Config
 
-Create .env file in home directory with:
+
+Create `.env` file in home directory with the following instruction:
 
 ```bash
 export NOVLAKE_SETTINGS=s3://<BUCKET_NAME>/novlake-settings.yaml
 
 ```
+
 
 ## Exemplo
 
