@@ -87,6 +87,9 @@ class Lake():
         )
 
     def export(self, dataframe, table_name, database_name=None, bucket_name=None, force_replace=False, ignore_warning=False):
+        if not self.athena_output:
+            raise Exception("Missing NOVLAKE_ATHENA_OUTPUT environment variable")
+            
         if database_name is None:
             database_name = f"user_{self.user_name}"
 
@@ -103,7 +106,7 @@ class Lake():
         # check existing data
         
         try:
-            existing_data = show(f"select * from {database_name}.{table_name} limit 5")
+            existing_data = self.query(f"select * from {database_name}.{table_name} limit 5")
         except Exception as e:
             if "does not exist" in str(e):
                 existing_data = []
@@ -114,10 +117,10 @@ class Lake():
             raise Exception(f"Table already contains data. Use 'force_replace=True' in order to overwrite.\nCurrent table data (5 sample rows):\n{str(existing_data)}")
         
         if len(existing_data) > 0 and force_replace:
-            session.s3.delete_objects(path=table_path)
+            self.session.s3.delete_objects(path=table_path)
             
     
-        session.pandas.to_parquet(
+        self.session.pandas.to_parquet(
             dataframe=dataframe,
             database=database_name,
             path=table_path,
@@ -126,3 +129,38 @@ class Lake():
         
         print(f"Successfully exported data to S3 ({table_path}) and registered table to Athena")
         print(f"Preview data with: SELECT * FROM {database_name}.{table_name}")
+
+        return table_path
+
+
+    def query_and_export(self, query, table_name, query_database="default", database_name=None, bucket_name=None, force_replace=False, ignore_warning=False, max_result_size=256_000_000):
+        """Queries data using Athena and returns pandas dataframe"""
+
+        if not self.athena_output:
+            raise Exception("Missing NOVLAKE_ATHENA_OUTPUT environment variable")
+            
+        dataframe_iter = self.session.pandas.read_sql_athena(
+            sql=query,
+            database=query_database,
+            s3_output=self.athena_output,
+            max_result_size=max_result_size
+        )
+
+        first_dataframe = None
+
+        for dataframe in dataframe_iter:
+            print(f"Exporting {len(dataframe)} rows")
+
+            if not first_dataframe:
+                # frist chunk of data
+                first_dataframe = dataframe
+                print(first_dataframe.dtypes)
+                table_path = self.export(first_dataframe, table_name, database_name, bucket_name, force_replace, ignore_warning)
+            else:
+                # other chunks
+                session.pandas.to_parquet(
+                    dataframe=dataframe,
+                    path=table_path,
+                )
+
+        print("Export done.")
