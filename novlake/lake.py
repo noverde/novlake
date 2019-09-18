@@ -151,8 +151,8 @@ class Lake():
         for dataframe in dataframe_iter:
             print(f"Exporting {len(dataframe)} rows")
 
-            if not first_dataframe:
-                # frist chunk of data
+            if first_dataframe is None:
+                # first chunk of data
                 first_dataframe = dataframe
                 print(first_dataframe.dtypes)
                 table_path = self.export(first_dataframe, table_name, database_name, bucket_name, force_replace, ignore_warning)
