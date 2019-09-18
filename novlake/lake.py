@@ -158,7 +158,7 @@ class Lake():
                 table_path = self.export(first_dataframe, table_name, database_name, bucket_name, force_replace, ignore_warning)
             else:
                 # other chunks
-                session.pandas.to_parquet(
+                self.session.pandas.to_parquet(
                     dataframe=dataframe,
                     path=table_path,
                 )
