@@ -54,15 +54,18 @@ class Lake():
 
     #     return dict()
 
-    def query(self, query, database="default"):
+    def query(self, query, database=None, no_limit=False):
         """Queries data using Athena and returns pandas dataframe"""
 
-        if not re.findall(r"limit", query, re.I):
+        if not re.findall(r"limit", query, re.I) and re.findall(r"select", query, re.I):
             raise Exception("Use LIMIT in your query")
 
         if not self.athena_output:
             raise Exception("Missing NOVLAKE_ATHENA_OUTPUT environment variable")
             
+        if not database:
+            database = self.athena_schema_name
+
         return self.session.pandas.read_sql_athena(
             sql=query,
             database=database,
@@ -164,3 +167,80 @@ class Lake():
                 )
 
         print("Export done.")
+
+
+    def list(self, table_filter=None):
+        import boto3
+
+        client = boto3.client('glue')
+        responseGetDatabases = client.get_databases()
+        databaseList = responseGetDatabases['DatabaseList']
+
+        table_rows_list = []
+
+        for databaseDict in databaseList:
+            databaseName = databaseDict['Name']
+
+            if "user_" not in databaseName or databaseName == self.athena_schema_name:
+                paginator = client.get_paginator('get_tables')
+
+                page_iterator = paginator.paginate(
+                    DatabaseName=databaseName
+                )
+
+                for page in page_iterator:
+                    for table in page["TableList"]:
+                        if table_filter is None or table_filter in table["Name"] or table_filter in databaseName:
+                            if "dim_" not in table["Name"]:
+                                table_rows_list.append(f"""
+                                    <tr>
+                                        <td>{databaseName}</td>
+                                        <td>{table['Name']}</td>
+                                        <td class='full_name'>lake.preview("{databaseName}.{table['Name']}")</td>
+                                    </tr>""")
+
+        table_rows = "\n".join(table_rows_list)
+
+        from IPython.core.display import display, HTML
+        display(HTML("""<style type="text/css">
+        table.td, tableth {
+            /*max-width: none;*/
+            white-space: normal;
+            line-height: normal;
+        }
+        .full_name {
+            font-size: 20%;
+        }
+        tbody {
+    height:80em;  
+    overflow:scroll;
+                }
+        </style>
+        <table style="width:100%">
+            <tr>
+                <th>Database</th>
+                <th>Table</th> 
+                <th>Preview</th>
+            </tr>""" + table_rows + """
+        </table>
+        """))
+
+    def help(self):
+        from IPython.core.display import display, HTML  
+        display(HTML('<h3>Novlake help</h3>'))
+
+    def preview(self, table_name):
+        df = self.query(f"SELECT * FROM {table_name} ORDER BY RANDOM() LIMIT 10")
+
+        columns_list = ",\n   ".join(df.columns)
+
+        try:
+            get_ipython().set_next_input(f'lake.query("""\nSELECT {columns_list} \nFROM {table_name}\nLIMIT 10\n""")')
+        except:
+            pass
+
+        return df
+
+
+if __name__ == "__main__":
+    lake = Lake("test")
