@@ -137,7 +137,7 @@ class Lake():
         return table_path
 
 
-    def query_and_export(self, query, table_name, query_database="default", database_name=None, bucket_name=None, force_replace=False, ignore_warning=False, max_result_size=256_000_000):
+    def query_and_export(self, query, table_name, query_database="default", database_name=None, bucket_name=None, force_replace=False, ignore_warning=False):
         """Queries data using Athena and returns pandas dataframe"""
 
         # TODO: this code was copied from self.export()
@@ -171,32 +171,46 @@ class Lake():
         if len(existing_data) > 0 and not force_replace:
             raise Exception(f"Table already contains data. Use 'force_replace=True' in order to overwrite.\nCurrent table data (5 sample rows):\n{str(existing_data)}")
         
-        if len(existing_data) > 0 and force_replace:
+        if force_replace:
             self.session.s3.delete_objects(path=table_path)  
-            
-        dataframe_iter = self.session.pandas.read_sql_athena(
-            sql=query,
-            database=query_database,
-            s3_output=self.athena_output,
-            max_result_size=max_result_size
-        )
 
-        first_dataframe = None
+            query_execution_id = self.session.athena.run_query(
+                query=f"DROP TABLE IF EXISTS`{database_name}.{table_name}`", database=query_database, s3_output=self.athena_output)
 
-        for dataframe in dataframe_iter:
-            print(f"Exporting {len(dataframe)} rows")
+            query_response = self.session.athena.wait_query(
+                query_execution_id=query_execution_id)
 
-            if first_dataframe is None:
-                # first chunk of data
-                first_dataframe = dataframe
-                print(first_dataframe.dtypes)
-                table_path = self.export(first_dataframe, table_name, database_name, bucket_name, force_replace, ignore_warning)
-            else:
-                # other chunks
-                self.session.pandas.to_parquet(
-                    dataframe=dataframe,
-                    path=table_path,
-                )
+            if query_response["QueryExecution"]["Status"]["State"] in [
+                    "FAILED", "CANCELLED"
+            ]:
+                reason = query_response["QueryExecution"]["Status"][
+                    "StateChangeReason"]
+                message_error = f"Query error: {reason}"
+                raise AthenaQueryError(message_error)
+
+        ctas = f"""
+        CREATE TABLE {database_name}.{table_name}
+        WITH (
+            external_location = '{table_path}',
+            format = 'Parquet',
+            parquet_compression = 'SNAPPY')
+        AS
+        { query }
+        """
+    
+        query_execution_id = self.session.athena.run_query(
+            query=ctas, database=query_database, s3_output=self.athena_output)
+
+        query_response = self.session.athena.wait_query(
+            query_execution_id=query_execution_id)
+
+        if query_response["QueryExecution"]["Status"]["State"] in [
+                "FAILED", "CANCELLED"
+        ]:
+            reason = query_response["QueryExecution"]["Status"][
+                "StateChangeReason"]
+            message_error = f"Query error: {reason}"
+            raise AthenaQueryError(message_error)
 
         print("Export done.")
 

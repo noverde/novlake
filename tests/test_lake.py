@@ -48,15 +48,3 @@ def test_lake_query_and_export():
 
     assert lake.query("select count(*) AS c FROM user_test.table_b LIMIT 1")["c"][0] == 10
 
-
-def test_lake_query_and_export_many_batches():
-    lake = Lake(user_name="test")
-
-    lake.query_and_export(
-        query="select id from user_test.table_a LIMIT 1000",
-        table_name="test_query_and_export_big",
-        force_replace=True,
-        max_result_size=1_000)
-
-    assert lake.query("select count(*) AS c FROM user_pierre.test_query_and_export_big LIMIT 1")["c"][0] == 1_000
-
