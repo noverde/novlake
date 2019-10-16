@@ -214,7 +214,7 @@ class Lake():
         """
     
         query_execution_id = self.session.athena.run_query(
-            query=ctas, database=query_database, s3_output=self.athena_output)
+            query=ctas, database=self.athena_schema_name, s3_output=self.athena_output)
 
         query_response = self.session.athena.wait_query(
             query_execution_id=query_execution_id)
