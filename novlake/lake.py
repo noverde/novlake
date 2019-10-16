@@ -115,14 +115,28 @@ class Lake():
             if "does not exist" in str(e):
                 existing_data = []
             else:
-                raise e
+                existing_data = []
+                print(f"Ignoring error: {e}")
             
         if len(existing_data) > 0 and not force_replace:
             raise Exception(f"Table already contains data. Use 'force_replace=True' in order to overwrite.\nCurrent table data (5 sample rows):\n{str(existing_data)}")
         
-        if len(existing_data) > 0 and force_replace:
-            self.session.s3.delete_objects(path=table_path)
-            
+        if force_replace:
+            self.session.s3.delete_objects(path=table_path)  
+
+            query_execution_id = self.session.athena.run_query(
+                query=f"DROP TABLE IF EXISTS`{database_name}.{table_name}`", database=query_database, s3_output=self.athena_output)
+
+            query_response = self.session.athena.wait_query(
+                query_execution_id=query_execution_id)
+
+            if query_response["QueryExecution"]["Status"]["State"] in [
+                    "FAILED", "CANCELLED"
+            ]:
+                reason = query_response["QueryExecution"]["Status"][
+                    "StateChangeReason"]
+                message_error = f"Query error: {reason}"
+                raise AthenaQueryError(message_error)
     
         self.session.pandas.to_parquet(
             dataframe=dataframe,
@@ -132,7 +146,7 @@ class Lake():
         )
         
         print(f"Successfully exported data to S3 ({table_path}) and registered table to Athena")
-        print(f"Preview data with: SELECT * FROM {database_name}.{table_name}")
+        print(f"Preview data with: lake.preview('{database_name}.{table_name}')")
 
         return table_path
 
@@ -166,7 +180,8 @@ class Lake():
             if "does not exist" in str(e):
                 existing_data = []
             else:
-                raise e
+                existing_data = []
+                print(f"Ignoring error: {e}")
             
         if len(existing_data) > 0 and not force_replace:
             raise Exception(f"Table already contains data. Use 'force_replace=True' in order to overwrite.\nCurrent table data (5 sample rows):\n{str(existing_data)}")
@@ -212,7 +227,10 @@ class Lake():
             message_error = f"Query error: {reason}"
             raise AthenaQueryError(message_error)
 
-        print("Export done.")
+        print(f"Successfully exported data to S3 ({table_path}) and registered table to Athena")
+        print(f"Preview data with: lake.preview('{database_name}.{table_name}')")
+
+        return table_path
 
 
     def dump_pg_table(self, query, database_name, table_name, bucket="noverde-data-repo", ds=None, db_code='REPLICA'):    
