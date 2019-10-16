@@ -125,7 +125,7 @@ class Lake():
             self.session.s3.delete_objects(path=table_path)  
 
             query_execution_id = self.session.athena.run_query(
-                query=f"DROP TABLE IF EXISTS`{database_name}.{table_name}`", database=query_database, s3_output=self.athena_output)
+                query=f"DROP TABLE IF EXISTS`{database_name}.{table_name}`", database=database_name, s3_output=self.athena_output)
 
             query_response = self.session.athena.wait_query(
                 query_execution_id=query_execution_id)
@@ -151,7 +151,7 @@ class Lake():
         return table_path
 
 
-    def query_and_export(self, query, table_name, query_database="default", database_name=None, bucket_name=None, force_replace=False, ignore_warning=False):
+    def query_and_export(self, query, table_name, database_name=None, bucket_name=None, force_replace=False, ignore_warning=False):
         """Queries data using Athena and returns pandas dataframe"""
 
         # TODO: this code was copied from self.export()
@@ -190,7 +190,7 @@ class Lake():
             self.session.s3.delete_objects(path=table_path)  
 
             query_execution_id = self.session.athena.run_query(
-                query=f"DROP TABLE IF EXISTS`{database_name}.{table_name}`", database=query_database, s3_output=self.athena_output)
+                query=f"DROP TABLE IF EXISTS`{database_name}.{table_name}`", database=database_name, s3_output=self.athena_output)
 
             query_response = self.session.athena.wait_query(
                 query_execution_id=query_execution_id)
