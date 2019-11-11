@@ -255,12 +255,17 @@ class Lake():
         
         print(dataframe.dtypes)
 
+        null_columns = dataframe.columns[dataframe.isna().all()].tolist()
+
+        print(f"NULL columns: {null_columns}")
+
         self.session.pandas.to_parquet(
             dataframe=dataframe,
             database=database_name,
             table=table_name,
             preserve_index=False,
             path=table_path,
+            cast_columns={c: "string" for c in null_columns},
             mode="overwrite"
         )
 
