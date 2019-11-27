@@ -269,7 +269,58 @@ class Lake():
             mode="overwrite"
         )
 
-        print("Dump done!")
+        print(f"Successfully exported data to S3 ({table_path}) and registered table to Athena")
+        print(f"Preview data with: lake.preview('{database_name}.{table_name}')")
+
+
+    def dump_pg_table_using_spark(self, query, database_name, table_name, bucket="noverde-data-repo", ds=None, db_code='REPLICA'):    
+        import findspark
+        import os
+        findspark.init()
+
+        import pyspark # only run after findspark.init()
+        from pyspark.sql import SparkSession
+        spark = SparkSession.builder.getOrCreate()
+
+        if ds is None:            
+            ds = str(dt.date.today() - dt.timedelta(days=1))
+        
+        table_path = f"s3://{bucket}/{database_name}/{table_name}/ds={ds}"
+        table_path_s3a = f"s3a://{bucket}/{database_name}/{table_name}/ds={ds}"
+        print(table_path)
+        
+        self.session.s3.delete_objects(path=table_path)
+        
+        dataframe = spark.read \
+        .format("jdbc") \
+        .option("driver", "org.postgresql.Driver") \
+        .option("url", "jdbc:postgresql://%s:5432/noverde_loans" % os.getenv(f"PG_{db_code}_HOST")) \
+        .option("dbtable", "(%s) t" % query) \
+        .option("user", os.getenv(f"PG_{db_code}_USERNAME")) \
+        .option("password", os.getenv(f"PG_{db_code}_PASSWORD")) \
+        .load()
+        
+        dataframe.printSchema()
+
+        (dataframe.write 
+            .mode("overwrite") 
+            .format("parquet") 
+            .save(compression="gzip", path=table_path_s3a)
+        )
+
+        self.session.spark.create_glue_table(
+            dataframe=dataframe,
+            database=database_name,
+            table=table_name,
+            file_format="parquet",
+            path=table_path,
+            compression="gzip",
+            replace_if_exists=True,
+            load_partitions=False)
+
+        print(f"Successfully exported data to S3 ({table_path}) and registered table to Athena")
+        print(f"Preview data with: lake.preview('{database_name}.{table_name}')")
+
 
 
     def list(self, table_filter=None):
