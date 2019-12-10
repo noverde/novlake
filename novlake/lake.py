@@ -294,7 +294,7 @@ class Lake():
         dataframe = spark.read \
         .format("jdbc") \
         .option("driver", "org.postgresql.Driver") \
-        .option("url", "jdbc:postgresql://%s:5432/noverde_loans" % os.getenv(f"PG_{db_code}_HOST")) \
+        .option("url", "jdbc:postgresql://%s:5432/%s" % (os.getenv(f"PG_{db_code}_HOST"), os.getenv(f"PG_{db_code}_DATABASE"))) \
         .option("dbtable", "(%s) t" % query) \
         .option("user", os.getenv(f"PG_{db_code}_USERNAME")) \
         .option("password", os.getenv(f"PG_{db_code}_PASSWORD")) \
