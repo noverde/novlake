@@ -55,6 +55,14 @@ class Lake():
 
     #     return dict()
 
+    def create_success_file(self, s3_repo):
+        settings = urlparse(s3_repo)
+        s3 = boto3.resource('s3')
+        success_file = s3.Object(settings.netloc, f"{settings.path.lstrip('/')}/_SUCCESS")
+        success_file.put(Body="")
+        print(f"Success file created at ({s3_repo}) ")
+        return True
+
     def query(self, query, database=None, no_limit=False):
         """Queries data using Athena and returns pandas dataframe"""
 
@@ -144,9 +152,11 @@ class Lake():
             path=table_path,
             # partition_cols=["col_name"],
         )
-        
+
+
         print(f"Successfully exported data to S3 ({table_path}) and registered table to Athena")
         print(f"Preview data with: lake.preview('{database_name}.{table_name}')")
+        self.create_success_file(s3_repo=s3_path)
 
         return table_path
 
@@ -229,6 +239,7 @@ class Lake():
 
         print(f"Successfully exported data to S3 ({table_path}) and registered table to Athena")
         print(f"Preview data with: lake.preview('{database_name}.{table_name}')")
+        self.create_success_file(s3_repo=table_path)
 
         return table_path
 
@@ -243,7 +254,6 @@ class Lake():
         print(table_path)
         
         self.session.s3.delete_objects(path=table_path)
-        
         connection = pg.connect("host='%s' dbname=%s user=%s password='%s'" % (
             os.getenv(f'PG_{db_code}_HOST'),
             os.getenv(f'PG_{db_code}_DATABASE'),
@@ -269,9 +279,10 @@ class Lake():
             mode="overwrite"
         )
 
+
         print(f"Successfully exported data to S3 ({table_path}) and registered table to Athena")
         print(f"Preview data with: lake.preview('{database_name}.{table_name}')")
-
+        self.create_success_file(s3_repo=table_path)
 
     def dump_pg_table_using_spark(self, query, database_name, table_name, bucket="noverde-data-repo", ds=None, db_code='REPLICA'):    
         import findspark
@@ -318,9 +329,10 @@ class Lake():
             replace_if_exists=True,
             load_partitions=False)
 
+
         print(f"Successfully exported data to S3 ({table_path}) and registered table to Athena")
         print(f"Preview data with: lake.preview('{database_name}.{table_name}')")
-
+        self.create_success_file(s3_repo=table_path)
 
 
     def list(self, table_filter=None):
